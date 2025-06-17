@@ -1,0 +1,15 @@
+[package]
+name = "ducky-rs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tts_rust = "0.3.5"
+llama-cpp-2 = "0.1.108"
+whisper-rs = "0.14.3"
+anyhow = "1.0"
+cpal = "0.16.0"
+hound = "3.5.1"
+
+[dev-dependencies]
+serial_test = "3.2"
