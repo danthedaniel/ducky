@@ -1,11 +1,10 @@
-mod audio;
 mod llm;
-mod stt;
 #[cfg(test)]
 mod test_buffer;
 
 use anyhow::Result;
 use std::env;
+use std::io::{self, Write};
 
 fn main() -> Result<()> {
     // Get command line arguments
@@ -17,9 +16,6 @@ fn main() -> Result<()> {
     }
 
     let models_dir = &args[1];
-    let stt =
-        stt::Stt::new(format!("{models_dir}/ggerganov/whisper.cpp/ggml-base-q8_0.bin").as_str())?;
-    let audio = audio::Audio::new()?;
 
     let mut llm = llm::Llm::new(
         format!(
@@ -29,38 +25,32 @@ fn main() -> Result<()> {
         Box::new(std::io::stdout()),
     )?;
 
+    println!("Enter your text (press Enter to send, Ctrl+C to exit):");
+
     loop {
-        // Record audio until Enter is pressed
-        let audio_data = match audio.record_until_enter() {
-            Ok(data) => data,
-            Err(e) => {
-                eprintln!("Recording error: {}", e);
-                continue;
-            }
-        };
+        // Print prompt
+        print!("> ");
+        io::stdout().flush()?;
 
-        // Skip if no audio data
-        if audio_data.is_empty() {
-            println!("No audio recorded, try again.");
-            continue;
-        }
+        // Read input from stdin
+        let mut input = String::new();
+        match io::stdin().read_line(&mut input) {
+            Ok(_) => {
+                let input = input.trim();
 
-        // Transcribe the audio
-        let transcription = match stt.transcribe(&audio_data) {
-            Ok(text) => {
-                println!("Transcribed: {}", text);
-                text
+                // Skip empty inputs
+                if input.is_empty() {
+                    continue;
+                }
+
+                // Send to LLM
+                llm.chat(input)?;
+                println!();
             }
             Err(e) => {
-                eprintln!("Transcription error: {}", e);
-                continue;
+                eprintln!("Error reading input: {}", e);
+                return Err(e.into());
             }
-        };
-
-        // Send to LLM if we have transcribed text
-        if !transcription.trim().is_empty() {
-            llm.chat(&transcription)?;
-            println!();
         }
     }
 }
